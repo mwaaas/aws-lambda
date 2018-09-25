@@ -1,0 +1,85 @@
+---
+Description: Example API Gateway with Lambda as backend
+Parameters:
+  S3Bucket:
+    Type: String
+    Description: S3 Bucket
+  S3Key:
+    Type: String
+    Description: S3 Key
+  MemorySize:
+    Type: String
+    Description: Lambda memory size
+    Default: 128
+  Runtime:
+    Type: String
+    Default: go1.x
+
+Resources:
+
+  LambaRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+      Policies:
+      - PolicyDocument:
+          Statement:
+          - Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Effect: Allow
+            Resource:
+            - arn:aws:logs:*:*:*
+        PolicyName: LambdaPolicy
+    Type: AWS::IAM::Role
+
+  Lambda:
+    Type: AWS::Lambda::Function
+    DependsOn:
+      - LambaRole
+    Properties:
+      Code:
+        S3Bucket:
+          Ref: S3Bucket
+        S3Key:
+          Ref: S3Key
+      Handler: main
+      MemorySize:
+        Ref: MemorySize
+      Role:
+        Fn::GetAtt:
+        - LambaRole
+        - Arn
+      Runtime:
+        Ref: Runtime
+      Timeout: 30
+
+
+
+Outputs:
+  Lambda:
+    Description: lambda
+    Value:
+      !Ref Lambda
+    Export:
+      Name:
+          Fn::Sub: "${AWS::StackName}-lambda"
+
+  LambdaArn:
+    Description: lambdaArn
+    Value:
+      Fn::GetAtt:
+        - Lambda
+        - Arn
+    Export:
+      Name:
+        Fn::Sub: "${AWS::StackName}-lambdaArn"
+
+

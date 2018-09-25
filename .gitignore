@@ -1,2 +1,5 @@
 .idea
 test/build
+tests/deployment.zip
+tests/app/dist
+tests/build
