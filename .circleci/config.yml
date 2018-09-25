@@ -21,11 +21,6 @@ jobs:
       - checkout
 
       - run:
-            name: Check style violations
-            command: |
-              docker-compose run app ./gradlew checkstyleMain
-
-      - run:
           name: Running tests
           command: |
             make test
