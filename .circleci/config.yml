@@ -1,0 +1,38 @@
+
+version: 2
+
+defaults: &defaults
+  machine:
+    image: circleci/classic:201708-01
+
+  working_directory: ~/aws-lambda
+
+aws_setup: &aws_setup
+  run:
+    name: configure aws
+    command: |
+      sudo AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY ./devops/scripts/aws_credentials.sh
+
+jobs:
+  tests:
+    <<: *defaults
+
+    steps:
+      - checkout
+
+      - run:
+            name: Check style violations
+            command: |
+              docker-compose run app ./gradlew checkstyleMain
+
+      - run:
+          name: Running tests
+          command: |
+            make test
+
+
+workflows:
+  version: 2
+  ci:
+    jobs:
+      - tests

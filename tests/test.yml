@@ -1,0 +1,15 @@
+---
+- hosts: all
+  connection: local
+  gather_facts: no
+  tasks:
+     - name: tesing aws-lambda role
+       include_role:
+        name: aws-lambda
+
+     - name: Test lambda has been created and works
+       uri:
+        url: https://your.jira.example.com/rest/api/2/issue/
+        method: POST
+        status_code: 201
+        body_format: json
