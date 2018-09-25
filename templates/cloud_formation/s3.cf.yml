@@ -1,0 +1,14 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Pre-reqs for Api gateway
+Resources:
+  Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+{% for item in aws_lambda.s3.stack_properties %}
+      {{item.name}}: {{item.value}}
+{% endfor %}
+
+Outputs:
+  BucketName:
+    Value:
+      !Ref Bucket

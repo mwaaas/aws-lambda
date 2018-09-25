@@ -2,10 +2,51 @@
 - hosts: all
   connection: local
   gather_facts: no
+  vars_files:
+    - ./group_vars/all.yml
+  vars:
+    aws_tags:
+      Owner: engineeringke
+      Environment: development
+      Classification: restricted
+      Status: active
+    region: "eu-west-1"
+    stack_name: "aws-lambda"
+    s3_stack_name: "{{ stack_name }}-s3"
+    s3_bucket_name: "{{ s3_stack_name }}-{{ region }}"
+    profile: jumo-dev
+    src: "deployment.zip"
+    src_code: "{{ app_version }}_{{ stack_name }}.zip"
+
+
   tasks:
+     - name: zip app
+       shell: zip -j deployment.zip ./app/dist/main
+
      - name: tesing aws-lambda role
-       include_role:
-        name: aws-lambda
+       import_role:
+        name: mwaaas.aws-lambda
+       vars:
+         aws_lambda:
+          s3:
+            stack_name: "{{ s3_stack_name }}"
+            stack_properties:
+              - name: BucketName
+                value: "{{ s3_bucket_name }}"
+          lambda:
+            stack_name: aws-lambda
+            stack_properties: {}
+            template_parameters:
+              Runtime: go1.x
+              MemorySize: 128
+              S3Bucket: "{{ s3_bucket_name }}"
+              S3Key: "{{ src_code }}"
+          api-gateway:
+            stack_name: aws-lambda-gateway
+            stack_properties: {}
+            template_parameters:
+
+
 
      - name: Test lambda has been created and works
        uri:

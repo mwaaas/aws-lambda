@@ -1,2 +1,18 @@
 ---
 # tasks file for aws-lambda
+  - name: configure cloud formation stacks
+    template: src={{role_path}}/templates/cloud_formation/{{item}}.cf.yml
+        dest=build/{{item}}.cf.yml
+    with_items:
+      - s3
+      - lambda
+
+  - name: provison resources
+    include_tasks: cloud_formation.yml
+    with_items:
+      - application: s3
+        stack_name: "{{ aws_lambda.s3.stack_name }}"
+        template_parameters: {}
+      - application: lambda
+        stack_name: "{{ aws_lambda.lambda.stack_name }}"
+        template_parameters: "{{ aws_lambda.lambda.template_parameters }}"

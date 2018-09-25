@@ -1,0 +1,34 @@
+- block:
+    - name: configure application context
+      cloudformation:
+        region: "{{ region | default('eu-west-1') }}"
+        stack_name: "{{ item.stack_name}}"
+        profile: "{{ profile }}"
+        template: "build/{{item.application}}.cf.yml"
+        template_parameters: "{{ item.template_parameters }}"
+        disable_rollback: true
+        tags: "{{ aws_tags | to_json }}"
+    - name: upload s3
+      aws_s3:
+        region: "{{ region }}"
+        profile: "{{ profile }}"
+        mode: put
+        overwrite: never
+        src: "{{ src }}"
+        bucket: "{{ s3_bucket_name }}"
+        object: "{{ src_code }}"
+      when: item.application == 's3'
+
+- block:
+    - name: get stack facts
+      cloudformation_facts:
+        profile: "{{ profile }}"
+        stack_name: "{{ item.stack_name }}"
+        stack_resources: true
+      changed_when: false
+    - name: set stack facts
+      set_fact:
+        Stack: "{{ Stack| default({}) | combine({ item.stack_name : cloudformation[item.stack_name] },recursive=True) }}"
+    - name: Stack.Facts variable
+      debug: msg={{ Stack }}
+      when: debug
