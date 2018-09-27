@@ -6,6 +6,7 @@
     with_items:
       - s3
       - lambda
+      - gateway
 
   - name: provison resources
     include_tasks: cloud_formation.yml
@@ -16,3 +17,6 @@
       - application: lambda
         stack_name: "{{ aws_lambda.lambda.stack_name }}"
         template_parameters: "{{ aws_lambda.lambda.template_parameters }}"
+      - application: gateway
+        stack_name: "{{ aws_lambda.gateway.stack_name }}"
+        template_parameters: "{{ aws_lambda.gateway.template_parameters }}"

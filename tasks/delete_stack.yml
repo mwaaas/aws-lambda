@@ -1,0 +1,12 @@
+- block:
+    - debug: msg="Deleting stack {{ item }}"
+
+    - name: delete application stack
+      cloudformation:
+        profile: "{{ profile }}"
+        stack_name: "{{ item }}"
+        state: absent
+      failed_when: False
+
+  tags:
+    - delete

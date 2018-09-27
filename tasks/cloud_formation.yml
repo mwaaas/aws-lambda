@@ -1,4 +1,5 @@
 - block:
+    - debug: msg="Configuring application {{ item.stack_name }}"
     - name: configure application context
       cloudformation:
         region: "{{ region | default('eu-west-1') }}"
