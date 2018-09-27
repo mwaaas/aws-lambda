@@ -1,7 +1,9 @@
-Role Name
+[![CircleCI](https://circleci.com/gh/mwaaas/aws-lambda.svg?style=svg)](https://circleci.com/gh/mwaaas/aws-lambda)
+
+aws-lambda
 =========
 
-A brief description of the role goes here.
+Have a lambda and gateway running in few minutes
 
 Requirements
 ------------
