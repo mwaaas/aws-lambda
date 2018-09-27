@@ -6,7 +6,10 @@ profile=default
 compile:
 	docker-compose -f tests/app/docker-compose.yml run app go build -o ./dist/main
 
-test: compile
+create_build_folder:
+	mkdir -p tests/build
+
+test: create_build_folder compile
 	docker-compose run ansible ansible-playbook tests/test.yml \
 	-i tests/inventory -e "app_version=$(app_version)" \
 	-e env=$(env) -e debug=$(debug) \
