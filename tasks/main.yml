@@ -1,5 +1,10 @@
 ---
 # tasks file for aws-lambda
+  - name: Create build folder if does not exists
+    file:
+        path: "build"
+        state: directory
+
   - name: configure cloud formation stacks
     template: src={{role_path}}/templates/cloud_formation/{{item}}.cf.yml
         dest=build/{{item}}.cf.yml
