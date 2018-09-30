@@ -43,7 +43,7 @@ Resources:
       - StatusCode: 200
       Integration:
         IntegrationHttpMethod: POST
-        Type: AWS
+        Type: AWS_PROXY
         IntegrationResponses:
         - StatusCode: 200
         Uri:
