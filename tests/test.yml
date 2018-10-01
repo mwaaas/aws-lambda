@@ -11,15 +11,14 @@
     region: "eu-west-1"
     stack_name: "aws-lambda"
     s3_stack_name: "{{ stack_name }}-s3"
-    s3_bucket_name: "{{ s3_stack_name }}-{{ region }}"
-    src: "deployment.zip"
+    s3_bucket_name: "{{ s3_stack_name }}"
     src_code: "{{ app_version }}_{{ stack_name }}.zip"
     stack_name_gateway: "{{ stack_name }}-gateway"
 
 
   tasks:
      - name: zip app
-       shell: zip -j deployment.zip ./app/dist/main
+       shell: "zip -j {{src_code}} ./app/dist/main"
 
      - name: tesing aws-lambda role
        include_role:
@@ -28,16 +27,14 @@
          aws_lambda:
           s3:
             stack_name: "{{ s3_stack_name }}"
-            stack_properties:
-              - name: BucketName
-                value: "{{ s3_bucket_name }}"
+            stack_properties: {}
           lambda:
             stack_name: "{{ stack_name }}"
             stack_properties: {}
             template_parameters:
               Runtime: go1.x
               MemorySize: 128
-              S3Bucket: "{{ s3_bucket_name }}"
+              S3Stack: "{{ s3_stack_name }}"
               S3Key: "{{ src_code }}"
           gateway:
             stack_name: "{{ stack_name_gateway }}"
@@ -46,6 +43,9 @@
               RestApiName: "{{ stack_name }}-gateway"
               Environment: "{{ env }}"
               LambdaStack: "{{ stack_name }}"
+              CertificateArn: "arn:aws:acm:eu-west-1:354955808555:certificate/41ea1a51-777a-4bdb-ad6e-787ad254ccd8"
+              DomainName: "test-lambda.tumacredo.com"
+
 
 
 
@@ -66,7 +66,7 @@
 
      - name: Delete a bucket and all contents
        aws_s3:
-        bucket: "{{ s3_bucket_name }}"
+        bucket: "{{Stack[s3_stack_name]['stack_outputs']['BucketName'] }}"
         mode: delete
         profile: "{{ profile }}"
 

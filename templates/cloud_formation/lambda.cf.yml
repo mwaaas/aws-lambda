@@ -1,7 +1,7 @@
 ---
 Description: Example API Gateway with Lambda as backend
 Parameters:
-  S3Bucket:
+  S3Stack:
     Type: String
     Description: S3 Bucket
   S3Key:
@@ -47,7 +47,8 @@ Resources:
     Properties:
       Code:
         S3Bucket:
-          Ref: S3Bucket
+          Fn::ImportValue:
+            !Sub "${S3Stack}-BucketName"
         S3Key:
           Ref: S3Key
       Handler: main
