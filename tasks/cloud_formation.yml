@@ -9,16 +9,6 @@
         template_parameters: "{{ item.template_parameters }}"
         disable_rollback: true
         tags: "{{ aws_tags | to_json }}"
-    - name: upload s3
-      aws_s3:
-        region: "{{ region }}"
-        profile: "{{ profile }}"
-        mode: put
-        overwrite: never
-        src: "{{ src }}"
-        bucket: "{{ s3_bucket_name }}"
-        object: "{{ src_code }}"
-      when: item.application == 's3'
 
 - block:
     - name: get stack facts
@@ -30,6 +20,23 @@
     - name: set stack facts
       set_fact:
         Stack: "{{ Stack| default({}) | combine({ item.stack_name : cloudformation[item.stack_name] },recursive=True) }}"
+    - name: upload s3
+      aws_s3:
+        region: "{{ region }}"
+        profile: "{{ profile }}"
+        mode: put
+        overwrite: never
+        src: "{{ src_code }}"
+        bucket: "{{ Stack[item.stack_name]['stack_outputs']['BucketName'] }}"
+        object: "{{ src_code }}"
+      when: item.application == 's3'
+
+    - name: delete source code
+      file: path="{{ src_code }}" state=absent
+      when:
+        - item.application == 's3'
+        - not debug | bool
+
     - name: Stack.Facts variable
       debug: msg={{ Stack }}
       when: debug

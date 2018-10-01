@@ -4,6 +4,7 @@ Resources:
   Bucket:
     Type: AWS::S3::Bucket
     Properties:
+      BucketName: !Sub '{{s3_bucket_name}}-${AWS::AccountId}-${AWS::Region}'
 {% for item in aws_lambda.s3.stack_properties %}
       {{item.name}}: {{item.value}}
 {% endfor %}
@@ -12,3 +13,6 @@ Outputs:
   BucketName:
     Value:
       !Ref Bucket
+    Export:
+      Name:
+          Fn::Sub: "${AWS::StackName}-BucketName"

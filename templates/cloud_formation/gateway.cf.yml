@@ -8,6 +8,10 @@ Parameters:
     Type: String
   LambdaStack:
     Type: String
+  CertificateArn:
+    Type: String
+  DomainName:
+    Type: String
 
 Resources:
   RestApi:
@@ -38,7 +42,7 @@ Resources:
         Ref: RestApi
       ApiKeyRequired: false
       AuthorizationType: NONE
-      HttpMethod: POST
+      HttpMethod: ANY
       MethodResponses:
       - StatusCode: 200
       Integration:
@@ -95,6 +99,22 @@ Resources:
         Ref: Environment
     Type: AWS::ApiGateway::Stage
 
+  CustomDomain:
+    Type: AWS::ApiGateway::DomainName
+    Properties:
+      DomainName: !Ref DomainName
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      RegionalCertificateArn: !Ref CertificateArn
+
+  BaseMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    Properties:
+      DomainName: !Ref DomainName
+      RestApiId: !Ref RestApi
+
+
 Outputs:
   RootUrl:
     Description: Root URL of the API gateway
@@ -109,3 +129,17 @@ Outputs:
     Export:
       Name:
         Fn::Sub: "${AWS::StackName}-endpoint"
+  
+  path:
+    Value:
+      Fn::Join:
+        - ''
+        - - ''
+          - !Ref Environment
+          - "/"
+          - !Ref RestApiName
+
+  DomainName:
+    Value: !GetAtt
+      - CustomDomain
+      - RegionalDomainName
