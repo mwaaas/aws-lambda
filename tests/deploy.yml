@@ -12,6 +12,7 @@
     stack_name: "aws-lambda"
     s3_stack_name: "{{ stack_name }}-s3"
     s3_bucket_name: "{{ s3_stack_name }}"
+    app_version: "{{ app_version }}"
     src_code: "{{ app_version }}_{{ stack_name }}.zip"
     stack_name_gateway: "{{ stack_name }}-gateway"
 
@@ -35,13 +36,13 @@
               Runtime: go1.x
               MemorySize: 128
               S3Stack: "{{ s3_stack_name }}"
+              Version: "{{app_version}}"
               S3Key: "{{ src_code }}"
           gateway:
             stack_name: "{{ stack_name_gateway }}"
             stack_properties: {}
             template_parameters:
               RestApiName: "{{ stack_name }}-gateway"
-              Environment: "{{ env }}"
               LambdaStack: "{{ stack_name }}"
               CertificateArn: "arn:aws:acm:eu-west-1:354955808555:certificate/41ea1a51-777a-4bdb-ad6e-787ad254ccd8"
               DomainName: "test-lambda.tumacredo.com"
@@ -64,17 +65,22 @@
          msg: "{{ testing_endpoint.msg }}"
        when: testing_endpoint.failed
 
-     - name: Delete a bucket and all contents
-       aws_s3:
-        bucket: "{{Stack[s3_stack_name]['stack_outputs']['BucketName'] }}"
-        mode: delete
-        profile: "{{ profile }}"
+       # deleting created stacks if we are in testing mode
+     - block:
+       - name: Delete a bucket and all contents
+         aws_s3:
+          bucket: "{{Stack[s3_stack_name]['stack_outputs']['BucketName'] }}"
+          mode: delete
+          profile: "{{ profile }}"
 
-     - name: Delete stacks
-       include_role:
-         name: mwaaas.aws-lambda
-         tasks_from: delete_stack
-       with_items:
-         - "{{ stack_name_gateway }}"
-         - "{{ stack_name }}"
-         - "{{ s3_stack_name }}"
+       - name: Delete stacks
+         include_role:
+           name: mwaaas.aws-lambda
+           tasks_from: delete_stack
+         with_items:
+           - "{{ gateway_stage_stack_name }}"
+           - "{{ lambda_version_stack_name }}"
+           - "{{ stack_name_gateway }}"
+           - "{{ stack_name }}"
+           - "{{ s3_stack_name }}"
+       when: test|bool

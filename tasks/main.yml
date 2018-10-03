@@ -12,7 +12,15 @@
       - s3
       - lambda
       - gateway
+      - gateway-stage
+      - lambda-version
 
+  - name: set lambda version stack
+    set_fact:
+        lambda_version_stack_name: "{{ aws_lambda.lambda.stack_name }}-version-{{ app_version }}"
+  - name: set gateway stage stack
+    set_fact:
+        gateway_stage_stack_name: "{{ aws_lambda.gateway.stack_name }}-{{ env }}"
   - name: provison resources
     include_tasks: cloud_formation.yml
     with_items:
@@ -22,6 +30,20 @@
       - application: lambda
         stack_name: "{{ aws_lambda.lambda.stack_name }}"
         template_parameters: "{{ aws_lambda.lambda.template_parameters }}"
+      - application: lambda-version
+        stack_name: "{{lambda_version_stack_name}}"
+        template_parameters:
+            Version: "{{ app_version }}"
+            LambdaStack: "{{ aws_lambda.lambda.stack_name }}"
       - application: gateway
         stack_name: "{{ aws_lambda.gateway.stack_name }}"
         template_parameters: "{{ aws_lambda.gateway.template_parameters }}"
+      - application: gateway-stage
+        stack_name: "{{ gateway_stage_stack_name }}"
+        template_parameters:
+            GatewayStack: "{{ aws_lambda.gateway.stack_name }}"
+            LambdaStack: "{{ aws_lambda.gateway.template_parameters['LambdaStack'] }}"
+            Environment: "{{ env}}"
+            LambdaVersionStack: "{{lambda_version_stack_name}}"
+
+

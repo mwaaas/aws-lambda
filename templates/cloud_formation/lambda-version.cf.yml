@@ -1,0 +1,36 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: api gateway stage
+Parameters:
+  Version:
+    Type: String
+  LambdaStack:
+    Type: String
+
+Resources:
+  LambdaVersion:
+    Type: AWS::Lambda::Version
+    Properties:
+      Description:
+        Ref: Version
+      FunctionName :
+         Fn::ImportValue:
+                !Sub "${LambdaStack}-lambdaArn"
+
+Outputs:
+  LambdaVersionArn:
+    Description: lambdaVersion
+    Value:
+      Ref: LambdaVersion
+    Export:
+      Name:
+        Fn::Sub: "${AWS::StackName}-lambdaVersionArn"
+
+  LambdaVersion:
+    Description: lambdaArn
+    Value:
+      Fn::GetAtt:
+        - LambdaVersion
+        - Version
+    Export:
+      Name:
+        Fn::Sub: "${AWS::StackName}-lambdaVersion"

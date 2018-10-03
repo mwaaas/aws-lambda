@@ -7,6 +7,8 @@ Parameters:
     Type: String
   LambdaStack:
     Type: String
+  LambdaVersionStack:
+    Type: String
 Resources:
   LambdaAlias:
     Type: AWS::Lambda::Alias
@@ -16,7 +18,7 @@ Resources:
                 !Sub "${LambdaStack}-lambdaArn"
       FunctionVersion:
         Fn::ImportValue:
-          !Sub "${LambdaStack}-lambdaVersion"
+          !Sub "${LambdaVersionStack}-lambdaVersion"
       Name:
         Ref: Environment
 
