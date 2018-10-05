@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/aws/aws-lambda-go/events"
@@ -22,14 +23,21 @@ func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	// stdout and stderr are sent to AWS CloudWatch Logs
 	log.Printf("Processing Lambda request %s\n", request.RequestContext.RequestID)
 	log.Printf("request body: %s", request.Body)
+	log.Printf("Proxxy request: %+v\n", request)
 
-	// If no name is provided in the HTTP request body, throw an error
-	if len(request.Body) < 1 {
-		return events.APIGatewayProxyResponse{}, ErrNameNotProvided
+	var jsonBodyInterface interface{}
+	err := json.Unmarshal([]byte(request.Body), &jsonBodyInterface)
+
+	if err != nil{
+		return events.APIGatewayProxyResponse{},
+		errors.New("something went wrong!")
 	}
 
+	jsonBody := jsonBodyInterface.(map[string]interface{})
+	log.Printf("request body interface: %s", jsonBody)
+	responseBody, _ := json.Marshal(request)
 	return events.APIGatewayProxyResponse{
-		Body:       "Hello " + request.Body,
+		Body:       string(responseBody),
 		StatusCode: 200,
 	}, nil
 }

@@ -4,8 +4,6 @@ Description: api gateway
 Parameters:
   RestApiName:
     Type: String
-  Environment:
-    Type: String
   LambdaStack:
     Type: String
   CertificateArn:
@@ -20,6 +18,14 @@ Resources:
       Name: !Ref RestApiName
     Type: AWS::ApiGateway::RestApi
 
+  ApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId:
+        Ref: RestApi
+    DependsOn:
+      - ResourceMethodAny
+
   ApiGatewayResource:
     Type: AWS::ApiGateway::Resource
     Properties:
@@ -27,11 +33,12 @@ Resources:
         Ref: RestApi
       ParentId:
         Fn::GetAtt:
-        - RestApi
-        - RootResourceId
-      PathPart: !Ref RestApiName
+          - RestApi
+          - RootResourceId
+      PathPart:
+        Ref: RestApiName
 
-  ResourceMethodPOST:
+  ResourceMethodAny:
     DependsOn:
     - ApiGatewayResource
     Type: AWS::ApiGateway::Method
@@ -58,16 +65,8 @@ Resources:
             - ":lambda:path/2015-03-31/functions/"
             - Fn::ImportValue:
                 !Sub "${LambdaStack}-lambdaArn"
+            - ":${stageVariables.LambdaAlias}"
             - "/invocations"
-
-  ApiGatewayDeployment:
-    Type: AWS::ApiGateway::Deployment
-    Properties:
-      RestApiId:
-        Ref: RestApi
-      StageName: v1
-    DependsOn:
-    - ResourceMethodPOST
 
   APILambdaPermission:
     Properties:
@@ -88,16 +87,6 @@ Resources:
           - "/*"
     Type: AWS::Lambda::Permission
 
-  APIStage:
-    Properties:
-      CacheClusterEnabled: false
-      DeploymentId:
-        Ref: ApiGatewayDeployment
-      RestApiId:
-        Ref: RestApi
-      StageName:
-        Ref: Environment
-    Type: AWS::ApiGateway::Stage
 
   CustomDomain:
     Type: AWS::ApiGateway::DomainName
@@ -129,15 +118,36 @@ Outputs:
     Export:
       Name:
         Fn::Sub: "${AWS::StackName}-endpoint"
-  
-  path:
+
+  RestApi:
     Value:
-      Fn::Join:
-        - ''
-        - - ''
-          - !Ref Environment
-          - "/"
-          - !Ref RestApiName
+      Ref: RestApi
+    Export:
+      Name:
+        Fn::Sub: "${AWS::StackName}-RestApi"
+
+  RestApiName:
+    Value:
+      Ref: RestApiName
+    Export:
+      Name:
+        Fn::Sub: "${AWS::StackName}-RestApiName"
+
+  ApiGatewayDeployment:
+    Value:
+      Ref: ApiGatewayDeployment
+    Export:
+      Name:
+        Fn::Sub: "${AWS::StackName}-ApiGatewayDeployment"
+
+  RestApiResourceId:
+    Value:
+      Fn::GetAtt:
+        - RestApi
+        - RootResourceId
+    Export:
+      Name:
+        Fn::Sub: "${AWS::StackName}-RestApiResourceId"
 
   DomainName:
     Value: !GetAtt

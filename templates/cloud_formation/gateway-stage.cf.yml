@@ -1,0 +1,69 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: api gateway stage
+Parameters:
+  Environment:
+    Type: String
+  GatewayStack:
+    Type: String
+  LambdaStack:
+    Type: String
+  LambdaVersionStack:
+    Type: String
+Resources:
+  LambdaAlias:
+    Type: AWS::Lambda::Alias
+    Properties:
+      FunctionName:
+        Fn::ImportValue:
+                !Sub "${LambdaStack}-lambdaArn"
+      FunctionVersion:
+        Fn::ImportValue:
+          !Sub "${LambdaVersionStack}-lambdaVersion"
+      Name:
+        Ref: Environment
+
+  APIStage:
+    Properties:
+      CacheClusterEnabled: false
+      DeploymentId:
+        Fn::ImportValue:
+          !Sub "${GatewayStack}-ApiGatewayDeployment"
+      RestApiId:
+        Fn::ImportValue:
+          !Sub "${GatewayStack}-RestApi"
+      StageName:
+        Ref: Environment
+      Variables:
+        LambdaAlias: !Ref Environment
+
+    Type: AWS::ApiGateway::Stage
+
+  LambdaAliasPermission:
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: LambdaAlias
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Join:
+        - ''
+        - - 'arn:aws:execute-api:'
+          - Ref: AWS::Region
+          - ":"
+          - Ref: AWS::AccountId
+          - ":"
+          - Fn::ImportValue:
+              !Sub "${GatewayStack}-RestApi"
+          - "/*"
+    Type: AWS::Lambda::Permission
+
+Outputs:
+  path:
+    Value:
+      Fn::Join:
+        - ''
+        - - ''
+          - !Ref Environment
+          - "/"
+          - Fn::ImportValue:
+              !Sub "${GatewayStack}-RestApi"
