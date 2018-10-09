@@ -7,7 +7,7 @@ test=true
 compile:
 	docker-compose -f tests/app/docker-compose.yml run app go build -o ./dist/main
 
-test:  #compile
+test:  compile
 	docker-compose run ansible ansible-playbook tests/deploy.yml \
 	-i tests/inventory -e "app_version=$(app_version)" \
 	-e env=$(env) -e debug=$(debug) -e test=$(test) \
