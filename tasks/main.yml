@@ -1,5 +1,25 @@
 ---
 # tasks file for aws-lambda
+  - name: set env_config is not set
+    set_fact:
+      env_config:
+      - file: ./group_vars/all.yml
+        name: all
+      - file: ./group_vars/development.yml
+        name: development
+      - file: ./group_vars/staging.yml
+        name: staging
+      - file: ./group_vars/production.yml
+        name: production
+    when: env_config is not defined
+
+  - name: Include default extension files in vars/services (2.2)
+    include_vars:
+      file: "{{item.file}}"
+      name: "{{item.name}}"
+    with_list: "{{ env_config }}"
+  - debug: msg="{{ vars }}"
+
   - name: Create build folder if does not exists
     file:
         path: "build"
@@ -11,7 +31,6 @@
   - name: set gateway stage stack
     set_fact:
         gateway_stage_stack_name: "{{ aws_lambda.gateway.stack_name }}-{{ env }}"
-
   - block:
       - name: configure s3 and lambda stack
         include_tasks: configure_cloud_formation_stack.yml
@@ -19,6 +38,11 @@
             - s3
             - lambda
             - lambda-version
+
+      - name: configure lambda again it has a special case of env
+        template: src=build/lambda.cf.yml
+            dest=build/lambda.cf.yml
+
       - name: provison s3 and lambda
         include_tasks: cloud_formation.yml
         with_items:

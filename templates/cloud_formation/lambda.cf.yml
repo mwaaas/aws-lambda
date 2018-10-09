@@ -96,7 +96,11 @@ Resources:
       Environment:
         Variables:
 {% for item in aws_lambda.lambda.variables %}
-          {{item}}_{{env}}: {{ self._TemplateReference__context.resolve(item)}}
+{% for i in env_config %}
+  {%if i.name != 'all' %}
+          {{item}}_{{i.name}}: {{ vars[i.name].get(item, vars['all'][item]) }}
+  {% endif %}
+{% endfor %}
 {% endfor %}
 {% endif %}
 
