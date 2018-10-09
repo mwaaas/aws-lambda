@@ -1,48 +1,109 @@
 package main
 
 import (
-	"encoding/json"
-	"errors"
-	"fmt"
-	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-lambda-go/lambda"
-	"log"
+    "context"
+    "encoding/json"
+    "fmt"
+    "github.com/aws/aws-lambda-go/events"
+    "github.com/aws/aws-lambda-go/lambda"
+    "log"
+    "net/http"
+    "os"
+    "regexp"
 )
 
-var (
-	// ErrNameNotProvided is thrown when a name is not provided
-	ErrNameNotProvided = errors.New("no name was provided in the HTTP body")
-)
+var isbnRegexp = regexp.MustCompile(`[0-9]{3}\-[0-9]{10}`)
+var errorLogger = log.New(os.Stderr, "ERROR ", log.Llongfile)
 
+type book struct {
+    ISBN   string `json:"isbn"`
+    Title  string `json:"title"`
+    Author string `json:"author"`
+}
 
-// Handler is your Lambda function handler
-// It uses Amazon API Gateway request/responses provided by the aws-lambda-go/events package,
-// However you could use other event sources (S3, Kinesis etc), or JSON-decoded primitive types such as 'string'.
-func Handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+func router(cxt context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+    fmt.Println("context:", cxt)
+    switch req.HTTPMethod {
+    case "GET":
+        return show(req)
+    case "POST":
+        return create(req)
+    default:
+        return clientError(http.StatusMethodNotAllowed)
+    }
+}
 
-	// stdout and stderr are sent to AWS CloudWatch Logs
-	log.Printf("Processing Lambda request %s\n", request.RequestContext.RequestID)
-	log.Printf("request body: %s", request.Body)
-	log.Printf("Proxxy request: %+v\n", request)
+func show(req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+    isbn := req.QueryStringParameters["isbn"]
+    if !isbnRegexp.MatchString(isbn) {
+        return clientError(http.StatusBadRequest)
+    }
 
-	var jsonBodyInterface interface{}
-	err := json.Unmarshal([]byte(request.Body), &jsonBodyInterface)
+    bk, err := getItem(isbn, req.RequestContext.Stage)
+    if err != nil {
+        return serverError(err)
+    }
+    if bk == nil {
+        return clientError(http.StatusNotFound)
+    }
 
-	if err != nil{
-		return events.APIGatewayProxyResponse{},
-		errors.New("something went wrong!")
-	}
+    js, err := json.Marshal(bk)
+    if err != nil {
+        return serverError(err)
+    }
 
-	jsonBody := jsonBodyInterface.(map[string]interface{})
-	log.Printf("request body interface: %s", jsonBody)
-	responseBody, _ := json.Marshal(request)
-	return events.APIGatewayProxyResponse{
-		Body:       string(responseBody),
-		StatusCode: 200,
-	}, nil
+    return events.APIGatewayProxyResponse{
+        StatusCode: http.StatusOK,
+        Body:       string(js),
+    }, nil
+}
+
+func create(req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+    if req.Headers["Content-Type"] != "application/json" {
+        return clientError(http.StatusNotAcceptable)
+    }
+
+    bk := new(book)
+    err := json.Unmarshal([]byte(req.Body), bk)
+    if err != nil {
+        return clientError(http.StatusUnprocessableEntity)
+    }
+
+    if !isbnRegexp.MatchString(bk.ISBN) {
+        return clientError(http.StatusBadRequest)
+    }
+    if bk.Title == "" || bk.Author == "" {
+        return clientError(http.StatusBadRequest)
+    }
+    fmt.Println("adding item")
+    err = putItem(bk, req.RequestContext.Stage)
+    if err != nil {
+        fmt.Println("error:", err.Error())
+        return serverError(err)
+    }
+
+    return events.APIGatewayProxyResponse{
+        StatusCode: 201,
+        Headers:    map[string]string{"Location": fmt.Sprintf("/books?isbn=%s", bk.ISBN)},
+    }, nil
+}
+
+func serverError(err error) (events.APIGatewayProxyResponse, error) {
+    errorLogger.Println(err.Error())
+
+    return events.APIGatewayProxyResponse{
+        StatusCode: http.StatusInternalServerError,
+        Body:       err.Error(),
+    }, nil
+}
+
+func clientError(status int) (events.APIGatewayProxyResponse, error) {
+    return events.APIGatewayProxyResponse{
+        StatusCode: status,
+        Body:       http.StatusText(status),
+    }, nil
 }
 
 func main() {
-	fmt.Println("hello world")
-	lambda.Start(Handler)
+    lambda.Start(router)
 }

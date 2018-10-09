@@ -2,20 +2,9 @@
 - hosts: all
   connection: local
   gather_facts: no
-  vars:
-    aws_tags:
-      Owner: engineeringke
-      Environment: development
-      Classification: restricted
-      Status: active
-    region: "eu-west-1"
-    stack_name: "aws-lambda"
-    s3_stack_name: "{{ stack_name }}-s3"
-    s3_bucket_name: "{{ s3_stack_name }}"
-    app_version: "{{ app_version }}"
-    src_code: "{{ app_version }}_{{ stack_name }}.zip"
-    stack_name_gateway: "{{ stack_name }}-gateway"
-
+  vars_files:
+    - ./group_vars/all.yml
+    - ./group_vars/{{ env }}.yml
 
   tasks:
      - name: zip app
@@ -26,12 +15,30 @@
         name: mwaaas.aws-lambda
        vars:
          aws_lambda:
+          dynamodb:
+            stack_name: "{{ stack_name_env }}-dynamodb"
+            stack_properties:
+              TableName: "{{DynamoDbTableName}}"
+              AttributeDefinitions:
+                -
+                  AttributeName: "ISBN"
+                  AttributeType: "S"
+              KeySchema:
+                -
+                  AttributeName: "ISBN"
+                  KeyType: "HASH"
+              ProvisionedThroughput:
+                ReadCapacityUnits: "5"
+                WriteCapacityUnits: "5"
+            template_parameters: {}
           s3:
             stack_name: "{{ s3_stack_name }}"
             stack_properties: {}
           lambda:
             stack_name: "{{ stack_name }}"
             stack_properties: {}
+            variables:
+              - DynamoDbTableName
             template_parameters:
               Runtime: go1.x
               MemorySize: 128
@@ -50,11 +57,11 @@
 
 
 
-     - name: Test lambda has been created and works
+     - name: Test lambda has been created and works post method
        uri:
         url: "{{ Stack[stack_name_gateway]['stack_outputs']['RootUrl']}}/{{env}}/{{stack_name_gateway}}"
         method: POST
-        status_code: 200
+        status_code: 201
         body_format: json
         body: "{{ lookup('file','body.json') }}"
        ignore_errors: yes
@@ -65,6 +72,19 @@
          msg: "{{ testing_endpoint.msg }}"
        when: testing_endpoint.failed
 
+
+     - name: Test lambda has been created and works get
+       uri:
+        url: "{{ Stack[stack_name_gateway]['stack_outputs']['RootUrl']}}/{{env}}/{{stack_name_gateway}}?isbn=978-0141439587"
+        method: GET
+        status_code: 200
+       ignore_errors: yes
+       register: testing_endpoint
+
+     - name:  Fail if the response failed
+       fail:
+         msg: "{{ testing_endpoint.msg }}"
+       when: testing_endpoint.failed
        # deleting created stacks if we are in testing mode
      - block:
        - name: Delete a bucket and all contents
@@ -72,15 +92,10 @@
           bucket: "{{Stack[s3_stack_name]['stack_outputs']['BucketName'] }}"
           mode: delete
           profile: "{{ profile }}"
-
+       - debug: msg="{{StackNames| reverse | list }}"
        - name: Delete stacks
          include_role:
            name: mwaaas.aws-lambda
            tasks_from: delete_stack
-         with_items:
-           - "{{ gateway_stage_stack_name }}"
-           - "{{ lambda_version_stack_name }}"
-           - "{{ stack_name_gateway }}"
-           - "{{ stack_name }}"
-           - "{{ s3_stack_name }}"
+         with_list: "{{ StackNames | reverse | list }}"
        when: test|bool

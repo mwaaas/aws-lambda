@@ -1,19 +1,29 @@
 ---
 # tasks file for aws-lambda
+  - name: set env_config is not set
+    set_fact:
+      env_config:
+      - file: ./group_vars/all.yml
+        name: all
+      - file: ./group_vars/development.yml
+        name: development
+      - file: ./group_vars/staging.yml
+        name: staging
+      - file: ./group_vars/production.yml
+        name: production
+    when: env_config is not defined
+
+  - name: Include default extension files in vars/services (2.2)
+    include_vars:
+      file: "{{item.file}}"
+      name: "{{item.name}}"
+    with_list: "{{ env_config }}"
+  - debug: msg="{{ vars }}"
+
   - name: Create build folder if does not exists
     file:
         path: "build"
         state: directory
-
-  - name: configure cloud formation stacks
-    template: src={{role_path}}/templates/cloud_formation/{{item}}.cf.yml
-        dest=build/{{item}}.cf.yml
-    with_items:
-      - s3
-      - lambda
-      - gateway
-      - gateway-stage
-      - lambda-version
 
   - name: set lambda version stack
     set_fact:
@@ -21,29 +31,66 @@
   - name: set gateway stage stack
     set_fact:
         gateway_stage_stack_name: "{{ aws_lambda.gateway.stack_name }}-{{ env }}"
-  - name: provison resources
-    include_tasks: cloud_formation.yml
-    with_items:
-      - application: s3
-        stack_name: "{{ aws_lambda.s3.stack_name }}"
-        template_parameters: {}
-      - application: lambda
-        stack_name: "{{ aws_lambda.lambda.stack_name }}"
-        template_parameters: "{{ aws_lambda.lambda.template_parameters }}"
-      - application: lambda-version
-        stack_name: "{{lambda_version_stack_name}}"
-        template_parameters:
-            Version: "{{ app_version }}"
-            LambdaStack: "{{ aws_lambda.lambda.stack_name }}"
-      - application: gateway
-        stack_name: "{{ aws_lambda.gateway.stack_name }}"
-        template_parameters: "{{ aws_lambda.gateway.template_parameters }}"
-      - application: gateway-stage
-        stack_name: "{{ gateway_stage_stack_name }}"
-        template_parameters:
+  - block:
+      - name: configure s3 and lambda stack
+        include_tasks: configure_cloud_formation_stack.yml
+        with_items:
+            - s3
+            - lambda
+            - lambda-version
+
+      - name: configure lambda again it has a special case of env
+        template: src=build/lambda.cf.yml
+            dest=build/lambda.cf.yml
+
+      - name: provison s3 and lambda
+        include_tasks: cloud_formation.yml
+        with_items:
+          - application: s3
+            stack_name: "{{ aws_lambda.s3.stack_name }}"
+            template_parameters: {}
+          - application: lambda
+            stack_name: "{{ aws_lambda.lambda.stack_name }}"
+            template_parameters: "{{ aws_lambda.lambda.template_parameters }}"
+          - application: lambda-version
+            stack_name: "{{lambda_version_stack_name}}"
+            template_parameters:
+                Version: "{{ app_version }}"
+                LambdaStack: "{{ aws_lambda.lambda.stack_name }}"
+  - block:
+    - name: configure gateway stacks
+      include_tasks: configure_cloud_formation_stack.yml
+      with_items:
+            - gateway
+            - gateway-stage
+    - name: provision gateway
+      include_tasks: cloud_formation.yml
+      with_items:
+        - application: gateway
+          stack_name: "{{ aws_lambda.gateway.stack_name }}"
+          template_parameters: "{{ aws_lambda.gateway.template_parameters }}"
+        - application: gateway-stage
+          stack_name: "{{ gateway_stage_stack_name }}"
+          template_parameters:
             GatewayStack: "{{ aws_lambda.gateway.stack_name }}"
             LambdaStack: "{{ aws_lambda.gateway.template_parameters['LambdaStack'] }}"
             Environment: "{{ env}}"
             LambdaVersionStack: "{{lambda_version_stack_name}}"
+    when: aws_lambda.gateway is defined
+
+  - block:
+    - name: provision dynamodb stacks
+      include_tasks: configure_cloud_formation_stack.yml
+      with_items:
+            - dynamodb
+    - name: provision dynamodb
+      include_tasks: cloud_formation.yml
+      vars:
+        item:
+          application: dynamodb
+          stack_name: "{{ aws_lambda.dynamodb.stack_name }}"
+          template_parameters: "{{ aws_lambda.dynamodb.template_parameters }}"
+    when: aws_lambda.dynamodb is defined
+
 
 

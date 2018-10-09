@@ -1,0 +1,14 @@
+aws_tags:
+  Owner: engineeringke
+  Environment: development
+  Classification: restricted
+  Status: active
+region: "eu-west-1"
+stack_name: "aws-lambda"
+stack_name_env: "{{ stack_name }}-{{env}}"
+s3_stack_name: "{{ stack_name }}-s3"
+s3_bucket_name: "{{ s3_stack_name }}"
+app_version: "{{ app_version }}"
+src_code: "{{ app_version }}_{{ stack_name }}.zip"
+stack_name_gateway: "{{ stack_name }}-gateway"
+DynamoDbTableName: "{{ stack_name_env }}"
