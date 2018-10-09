@@ -1,0 +1,3 @@
+- name: configure cloud formation stacks
+  template: src={{role_path}}/templates/cloud_formation/{{item}}.cf.yml
+      dest=build/{{item}}.cf.yml

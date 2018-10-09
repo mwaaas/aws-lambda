@@ -1,0 +1,10 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Dynamo Db
+
+Resources:
+  DynamoDb:
+    Type: AWS::DynamoDB::Table
+    Properties:
+{% for key, value in aws_lambda.dynamodb.stack_properties.items() %}
+      {{key}}: {{value}}
+{% endfor %}

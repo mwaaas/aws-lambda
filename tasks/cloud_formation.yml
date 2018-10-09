@@ -20,6 +20,15 @@
     - name: set stack facts
       set_fact:
         Stack: "{{ Stack| default({}) | combine({ item.stack_name : cloudformation[item.stack_name] },recursive=True) }}"
+
+    - name: set stack facts in list
+      set_fact:
+        StackNames: "{{ StackNames | default([]) | list }}"
+
+    - name: set stack facts in list
+      set_fact:
+        StackNames: "{{ StackNames + [ item.stack_name ]  }}"
+
     - name: upload s3
       aws_s3:
         region: "{{ region }}"
@@ -39,4 +48,8 @@
 
     - name: Stack.Facts variable
       debug: msg={{ Stack }}
-      when: debug
+      when: debug | bool
+
+    - name: StackNames.Facts variable
+      debug: msg={{ StackNames }}
+      when: debug | bool

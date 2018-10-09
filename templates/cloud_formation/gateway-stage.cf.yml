@@ -35,7 +35,11 @@ Resources:
         Ref: Environment
       Variables:
         LambdaAlias: !Ref Environment
-
+{% if aws_lambda.lambda.dynamodb is defined %}
+        DynamoDbTableName: "{{aws_lambda.lambda.dynamodb}}"
+{% elif aws_lambda.dynamodb is defined %}
+        DynamoDbTableName: "{{ aws_lambda.dynamodb.stack_properties.TableName }}"
+{% endif %}
     Type: AWS::ApiGateway::Stage
 
   LambdaAliasPermission:
